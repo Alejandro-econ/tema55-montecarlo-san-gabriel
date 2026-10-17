@@ -1,0 +1,6 @@
+# Claves y configuración personal: NUNCA se suben a GitHub
+.env
+# Archivos temporales de Python y de Colab
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
