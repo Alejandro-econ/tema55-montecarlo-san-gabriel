@@ -4,3 +4,8 @@
 __pycache__/
 *.pyc
 .ipynb_checkpoints/
+# Datos: se regeneran con los scripts y no se redistribuyen (ver incidencias_fuente.md)
+datos_crudos/*
+datos_procesados/*
+!datos_crudos/.gitkeep
+!datos_procesados/.gitkeep
