@@ -7,7 +7,7 @@
 | Curso | Finanzas I (055D), Facultad de Economía, UNCP, 2026-II |
 | Docente | Dr. Ciro Iván Machacuay Meza |
 | Tema del temario | N.º 55: Riesgo del proyecto: simulación de Monte Carlo sobre precio, demanda y tipo de cambio |
-| Repositorio | https://github.com/USUARIO/REPOSITORIO |
+| Repositorio | https://github.com/Alejandro-econ/tema55-montecarlo-san-gabriel |
 
 ## 1. Qué hace este proyecto
 Calcula la **distribución del VAN** de la mina de oro San Gabriel (Buenaventura, Moquegua) con **10 000 simulaciones de Monte Carlo**. Los parámetros del proyecto se leen con código del informe técnico oficial presentado a la SEC. El riesgo del precio del oro, de la demanda de inversión en oro, del tipo de cambio y del riesgo país se calibra con **datos diarios reales** (más de 5 000 días por variable).
@@ -21,7 +21,7 @@ Calcula la **distribución del VAN** de la mina de oro San Gabriel (Buenaventura
 | 2. Descarga programática | SPDR Gold Shares | `https://api.spdrgoldshares.com/api/v1/historical-archive?product=gld&exchange=NYSE&lang=en` | Toneladas de oro del fondo GLD (demanda) |
 
 - **Fecha de inicio (parámetro):** 2004-11-18. **Fecha de corte (parámetro):** 2026-08-31.
-- **Primera y última fecha con datos reales en la base procesada:** 2004-11-18 a 2026-08-31 (5,132 días).
+- **Primera y última fecha con datos reales en la base procesada:** 2004-11-18 a 2026-08-31 (5,221 días).
 - **Semilla aleatoria:** 531, tomada de los 4 últimos dígitos del código de matrícula (2024200**531**K → 0531).
 
 ## 3. Orden de ejecución
@@ -39,7 +39,7 @@ También se puede ejecutar todo con el cuaderno `ejecutar_en_colab.ipynb`.
 - Librerías: ver `requirements.txt`, generado con las versiones exactas usadas: requests==2.32.4, pandas==2.2.3, numpy==2.1.3, yfinance==0.2.66, pdfplumber==0.11.10, statsmodels==0.15.0, scipy==1.16.3, matplotlib==3.10.0, openpyxl==3.1.5, python-dotenv==1.2.3
 
 ## 5. Verificación
-- **SHA-256 de `datos_procesados/datos_procesados_2024200531K.csv`:** `47e5b548f9531737165c738a8cb3243085cc0d3869e709e94a45ed08895ee863`
+- **SHA-256 de `datos_procesados/datos_procesados_2024200531K.csv`:** `5f76f03e7199fb95181165c16c8f9969448de893d13bded15025e57245849a95`
 - `log_ejecucion.txt`: fecha y hora, URL, código HTTP y filas de cada extracción.
 - `salidas/tabla_cotejo_10_datos.csv`: 10 días al azar con su valor crudo y procesado, y el enlace a la web del BCRP para compararlos.
 - `incidencias_fuente.md`: ajustes y bloqueos de las fuentes.
