@@ -1,0 +1,18 @@
+Concepto,Valor,Fuente
+Oro pagable en la vida de la mina (koz),1547.0,"TRS, Tabla 1-2"
+Vida de la mina (años),14.2,"TRS, sección 1.2"
+Producción anual usada (koz/año),110.5,Cálculo: oro pagable / años
+Producción media anual según TRS (koz/año),109.0,"TRS, sección 1.2.2"
+Inversión pendiente (US$ mm),177.0,"TRS, Tabla 1-2"
+Costo de cierre (US$ mm),17.0,"TRS, sección 1.2.1.3"
+Precio del oro del TRS (US$/oz),2172.0,"TRS, sección 1.2.2"
+AISC del TRS (US$/oz),1568.0,"TRS, sección 1.2.2"
+Costo unitario implícito (US$/oz),1528.8196509372979,Cálculo con flujos del TRS
+Tasa efectiva de impuestos (%),32.8643216080402,Cálculo con flujos del TRS
+Tasa de descuento WACC (%),8.26,"TRS, Tabla 1-2"
+VAN después de impuestos oficial (US$ mm),191.0,"TRS, Tabla 1-2"
+VAN del modelo con precio TRS (US$ mm),205.32688908906647,Modelo propio
+Diferencia modelo vs. oficial (%),7.500989051867268,Validación
+"Precio del oro de equilibrio, VAN = 0 (US$/oz)",1831.1908856867556,Cálculo con el modelo
+Precio de mercado al 2026-08-31 (US$/oz),4437.38,"BCRP, serie PD04704XD"
+Margen de seguridad del precio (%),58.73261055652761,Cálculo: 1 - equilibrio / mercado

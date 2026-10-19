@@ -10,7 +10,7 @@
 | tc | Tipo de cambio interbancario, venta | S/ por US$ | Diaria | BCRP, BCRPData, serie PD04638PD | `.../api/PD04638PD/json/2004-11-18/2026-08-31` |
 | ust10 | Rendimiento de los bonos del Tesoro de EE. UU. a 10 años | % | Diaria | BCRP, BCRPData, serie PD04719XD | `.../api/PD04719XD/json/2004-11-18/2026-08-31` |
 | embig_peru | Spread EMBIG Perú (riesgo país) | Puntos básicos | Diaria | BCRP, BCRPData, serie PD04709XD | `.../api/PD04709XD/json/2004-11-18/2026-08-31` |
-| demanda_ton | Oro físico que guarda el fondo SPDR Gold Shares (demanda de inversión en oro) | Toneladas | Diaria | SPDR Gold Shares, archivo histórico GLD | `https://www.spdrgoldshares.com/assets/dynamic/GLD/GLD_US_archive_EN.csv` |
+| demanda_ton | Oro físico que guarda el fondo SPDR Gold Shares (demanda de inversión en oro) | Toneladas | Diaria | SPDR Gold Shares (World Gold Trust Services), archivo histórico GLD en Excel, hoja «US GLD Historical Archive», columna «Tonnes of Gold» | `https://api.spdrgoldshares.com/api/v1/historical-archive?product=gld&exchange=NYSE&lang=en` |
 | gld_cierre | Precio de cierre del fondo GLD | US$ por acción | Diaria | Yahoo Finance (yfinance) | `yfinance.download("GLD", "2004-11-18", "2026-09-01")` |
 | gld_volumen | Acciones del fondo GLD negociadas en el día | Número de acciones | Diaria | Yahoo Finance (yfinance) | Ídem |
 | gld_monto_musd | Monto negociado del fondo GLD = cierre × volumen / 1 000 000 (respaldo de la demanda) | US$ millones | Diaria | Cálculo propio (Yahoo) | — |

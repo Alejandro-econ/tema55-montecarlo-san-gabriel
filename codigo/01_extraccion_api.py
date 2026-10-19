@@ -6,7 +6,7 @@
 VÍA 1 — EXTRACCIÓN POR API
 ---------------------------
 Este script descarga, sin ninguna intervención manual:
-  (a) 4 series DIARIAS del BCRP mediante su API REST pública (BCRPData).
+  (a) 3 series DIARIAS del BCRP mediante su API REST pública (BCRPData).
   (b) El fondo de oro SPDR Gold Shares (ticker GLD) desde Yahoo Finance (librería yfinance).
 Cada respuesta se guarda TAL COMO LLEGA en la carpeta datos_crudos/ (no se edita nunca).
 """
@@ -36,7 +36,6 @@ FECHA_CORTE = "2026-08-31"    # último día del periodo de estudio
 SERIES_BCRP = {
     "PD04704XD": "precio_oro",   # Oro (Londres, US$ por onza troy)
     "PD04638PD": "tc",           # Tipo de cambio interbancario venta (S/ por US$)
-    "PD04719XD": "ust10",        # Bonos del Tesoro de EE. UU. a 10 años (%)
     "PD04709XD": "embig_peru",   # Spread EMBIG Perú (puntos básicos)
 }
 URL_BCRP = "https://estadisticas.bcrp.gob.pe/estadisticas/series/api/{codigo}/json/{inicio}/{fin}"

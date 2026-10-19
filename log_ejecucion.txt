@@ -1,0 +1,75 @@
+2026-10-17 07:48:54 (Lima) | 01_extraccion_api | HTTP 200 | filas=5683 | https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PD04704XD/json/2004-11-18/2026-08-31 | precio_oro: Cotizaciones internacionales - Oro (Londres, US$ por onzas troy)
+2026-10-17 07:48:57 (Lima) | 01_extraccion_api | HTTP 200 | filas=5683 | https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PD04638PD/json/2004-11-18/2026-08-31 | tc: Tipo de cambio - TC Interbancario (S/ por US$) - Venta
+2026-10-17 07:48:59 (Lima) | 01_extraccion_api | HTTP 200 | filas=5683 | https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PD04719XD/json/2004-11-18/2026-08-31 | ust10: Tasas de interés internacionales - Bonos del Tesoro EE.UU. - 10 años (%)
+2026-10-17 07:49:01 (Lima) | 01_extraccion_api | HTTP 200 | filas=5683 | https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PD04709XD/json/2004-11-18/2026-08-31 | embig_peru: Tasas de interés: EMBIG (variación en pbs) - Spread - EMBIG Perú (pbs)
+2026-10-17 07:49:03 (Lima) | 01_extraccion_api | HTTP 200 | filas=5479 | yfinance.download('GLD', 2004-11-18, 2026-09-01) | Yahoo Finance GLD (Open, High, Low, Close, Adj Close, Volume)
+2026-10-17 07:50:36 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://www.sec.gov/robots.txt | robots.txt -> permitido=True
+2026-10-17 07:50:37 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://www.sec.gov/Archives/edgar/data/1013131/000141057825001056/tmb-20241231xex96d2.pdf | PDF descargado: 18,979,086 bytes
+2026-10-17 07:50:48 (Lima) | 02_scraping_web | HTTP PARSEO | filas=12 | https://www.sec.gov/Archives/edgar/data/1013131/000141057825001056/tmb-20241231xex96d2.pdf | parámetros encontrados 12/12 (PDF de 269 páginas)
+2026-10-17 07:50:49 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://www.spdrgoldshares.com/robots.txt | robots.txt -> permitido=True
+2026-10-17 07:50:50 (Lima) | 02_scraping_web | HTTP 200 | filas=5717 | https://www.spdrgoldshares.com/assets/dynamic/GLD/GLD_US_archive_EN.csv | Archivo histórico GLD guardado
+2026-10-17 07:51:31 (Lima) | 03_limpieza_datos | filas=5683 | BCRP PD04704XD (precio_oro): 5659 datos reales de 5683 fechas
+2026-10-17 07:51:31 (Lima) | 03_limpieza_datos | filas=5683 | BCRP PD04638PD (tc): 5415 datos reales de 5683 fechas
+2026-10-17 07:51:31 (Lima) | 03_limpieza_datos | filas=5683 | BCRP PD04719XD (ust10): 5536 datos reales de 5683 fechas
+2026-10-17 07:51:31 (Lima) | 03_limpieza_datos | filas=5683 | BCRP PD04709XD (embig_peru): 5683 datos reales de 5683 fechas
+2026-10-17 07:51:31 (Lima) | 03_limpieza_datos | filas=5479 | Yahoo GLD: 5479 días
+2026-10-17 08:07:17 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://www.sec.gov/robots.txt | robots.txt -> permitido=True
+2026-10-17 08:07:18 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://www.sec.gov/Archives/edgar/data/1013131/000141057825001056/tmb-20241231xex96d2.pdf | PDF descargado: 18,979,086 bytes
+2026-10-17 08:07:28 (Lima) | 02_scraping_web | HTTP PARSEO | filas=12 | https://www.sec.gov/Archives/edgar/data/1013131/000141057825001056/tmb-20241231xex96d2.pdf | parámetros encontrados 12/12 (PDF de 269 páginas)
+2026-10-17 08:07:29 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://api.spdrgoldshares.com/robots.txt | robots.txt -> permitido=False
+2026-10-17 08:07:29 (Lima) | 02_scraping_web | HTTP NO_PERMITIDO | filas=0 | https://api.spdrgoldshares.com/api/v1/historical-archive?product=gld&exchange=NYSE&lang=en | robots.txt no permite la ruta
+2026-10-17 08:09:44 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://www.sec.gov/robots.txt | robots.txt -> permitido=True
+2026-10-17 08:09:45 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://www.sec.gov/Archives/edgar/data/1013131/000141057825001056/tmb-20241231xex96d2.pdf | PDF descargado: 18,979,086 bytes
+2026-10-17 08:09:54 (Lima) | 02_scraping_web | HTTP PARSEO | filas=12 | https://www.sec.gov/Archives/edgar/data/1013131/000141057825001056/tmb-20241231xex96d2.pdf | parámetros encontrados 12/12 (PDF de 269 páginas)
+2026-10-17 08:09:55 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://api.spdrgoldshares.com/robots.txt | robots.txt -> permitido=False
+2026-10-17 08:09:55 (Lima) | 02_scraping_web | HTTP NO_PERMITIDO | filas=0 | https://api.spdrgoldshares.com/api/v1/historical-archive?product=gld&exchange=NYSE&lang=en | robots.txt no permite la ruta
+2026-10-17 08:10:18 (Lima) | 03_limpieza_datos | filas=5683 | BCRP PD04704XD (precio_oro): 5659 datos reales de 5683 fechas
+2026-10-17 08:10:18 (Lima) | 03_limpieza_datos | filas=5683 | BCRP PD04638PD (tc): 5415 datos reales de 5683 fechas
+2026-10-17 08:10:18 (Lima) | 03_limpieza_datos | filas=5683 | BCRP PD04719XD (ust10): 5536 datos reales de 5683 fechas
+2026-10-17 08:10:18 (Lima) | 03_limpieza_datos | filas=5683 | BCRP PD04709XD (embig_peru): 5683 datos reales de 5683 fechas
+2026-10-17 08:10:18 (Lima) | 03_limpieza_datos | filas=5479 | Yahoo GLD: 5479 días
+2026-10-17 08:10:18 (Lima) | 03_limpieza_datos | filas= | AVISO: no existe el archivo SPDR. La demanda se medirá con el volumen negociado de GLD (Yahoo).
+2026-10-17 08:10:18 (Lima) | 03_limpieza_datos | filas=5132 | Unión: 5683 fechas -> 5132 días con las 5 variables núcleo completas
+2026-10-17 08:10:18 (Lima) | 03_limpieza_datos | filas= | Atípicos marcados (|z|>5) en r_oro: 13
+2026-10-17 08:10:18 (Lima) | 03_limpieza_datos | filas= | Atípicos marcados (|z|>5) en r_tc: 18
+2026-10-17 08:10:18 (Lima) | 03_limpieza_datos | filas= | Atípicos marcados (|z|>5) en r_demanda: 2
+2026-10-17 08:10:18 (Lima) | 03_limpieza_datos | filas= | Atípicos marcados (|z|>5) en d_riesgo_pais: 20
+2026-10-17 08:10:19 (Lima) | 03_limpieza_datos | filas=5132 | Primera fecha con datos: 2004-11-18 | última: 2026-08-31
+2026-10-17 08:10:19 (Lima) | 03_limpieza_datos | filas=5132 | SHA-256 de datos_procesados_2024200531K.csv: 47e5b548f9531737165c738a8cb3243085cc0d3869e709e94a45ed08895ee863
+2026-10-17 08:10:35 (Lima) | 04_analisis | Base: 5132 días, de 2004-11-18 a 2026-08-31; demanda medida con 'gld_monto_musd'
+2026-10-17 08:10:42 (Lima) | 04_analisis | Validación: VAN modelo 205.3 vs oficial 191.0 US$ mm
+2026-10-17 08:10:42 (Lima) | 04_analisis | Monte Carlo: 10000 simulaciones por escenario, semilla 531, bloques de 21 días, P0 mercado = 4,437.38 US$/oz, TC0 = 3.3629
+2026-10-17 08:10:45 (Lima) | 04_analisis | Tablas: 10 | Figuras: 5 | Cointegración oro-demanda: False
+2026-10-17 08:22:02 (Lima) | 01_extraccion_api | HTTP 200 | filas=5683 | https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PD04704XD/json/2004-11-18/2026-08-31 | precio_oro: Cotizaciones internacionales - Oro (Londres, US$ por onzas troy)
+2026-10-17 08:22:04 (Lima) | 01_extraccion_api | HTTP 200 | filas=5683 | https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PD04638PD/json/2004-11-18/2026-08-31 | tc: Tipo de cambio - TC Interbancario (S/ por US$) - Venta
+2026-10-17 08:22:05 (Lima) | 01_extraccion_api | HTTP 200 | filas=5683 | https://estadisticas.bcrp.gob.pe/estadisticas/series/api/PD04709XD/json/2004-11-18/2026-08-31 | embig_peru: Tasas de interés: EMBIG (variación en pbs) - Spread - EMBIG Perú (pbs)
+2026-10-17 08:22:07 (Lima) | 01_extraccion_api | HTTP 200 | filas=5479 | yfinance.download('GLD', 2004-11-18, 2026-09-01) | Yahoo Finance GLD (Open, High, Low, Close, Adj Close, Volume)
+2026-10-17 08:22:27 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://www.sec.gov/robots.txt | robots.txt -> permitido=True
+2026-10-17 08:22:29 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://www.sec.gov/Archives/edgar/data/1013131/000141057825001056/tmb-20241231xex96d2.pdf | PDF descargado: 18,979,086 bytes
+2026-10-17 08:22:37 (Lima) | 02_scraping_web | HTTP PARSEO | filas=12 | https://www.sec.gov/Archives/edgar/data/1013131/000141057825001056/tmb-20241231xex96d2.pdf | parámetros encontrados 12/12 (PDF de 269 páginas)
+2026-10-17 08:22:38 (Lima) | 02_scraping_web | HTTP 200 | filas=0 | https://fred.stlouisfed.org/robots.txt | robots.txt -> permitido=True
+2026-10-17 08:22:41 (Lima) | 02_scraping_web | HTTP 200 | filas=5683 | https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10&cosd=2004-11-18&coed=2026-08-31 | FRED DGS10 (CSV) guardado
+2026-10-17 08:22:57 (Lima) | 03_limpieza_datos | filas=5683 | BCRP PD04704XD (precio_oro): 5659 datos reales de 5683 fechas
+2026-10-17 08:22:57 (Lima) | 03_limpieza_datos | filas=5683 | BCRP PD04638PD (tc): 5415 datos reales de 5683 fechas
+2026-10-17 08:22:58 (Lima) | 03_limpieza_datos | filas=5683 | BCRP PD04709XD (embig_peru): 5683 datos reales de 5683 fechas
+2026-10-17 08:22:58 (Lima) | 03_limpieza_datos | filas=5479 | Yahoo GLD: 5479 días
+2026-10-17 08:22:58 (Lima) | 03_limpieza_datos | filas=5683 | FRED DGS10 (ust10): 5450 datos reales de 5683 fechas
+2026-10-17 08:22:58 (Lima) | 03_limpieza_datos | filas=5221 | Unión: 5683 fechas -> 5221 días con las 5 variables núcleo completas
+2026-10-17 08:22:58 (Lima) | 03_limpieza_datos | filas= | Atípicos marcados (|z|>5) en r_oro: 12
+2026-10-17 08:22:58 (Lima) | 03_limpieza_datos | filas= | Atípicos marcados (|z|>5) en r_tc: 17
+2026-10-17 08:22:58 (Lima) | 03_limpieza_datos | filas= | Atípicos marcados (|z|>5) en r_demanda: 1
+2026-10-17 08:22:58 (Lima) | 03_limpieza_datos | filas= | Atípicos marcados (|z|>5) en d_riesgo_pais: 16
+2026-10-17 08:22:58 (Lima) | 03_limpieza_datos | filas=5221 | Primera fecha con datos: 2004-11-18 | última: 2026-08-31
+2026-10-17 08:22:58 (Lima) | 03_limpieza_datos | filas=5221 | SHA-256 de datos_procesados_2024200531K.csv: 5f76f03e7199fb95181165c16c8f9969448de893d13bded15025e57245849a95
+2026-10-17 08:23:06 (Lima) | 04_analisis | Base: 5221 días, de 2004-11-18 a 2026-08-31; demanda medida con 'gld_monto_musd'
+2026-10-17 08:23:10 (Lima) | 04_analisis | Validación: VAN modelo 205.3 vs oficial 191.0 US$ mm
+2026-10-17 08:23:11 (Lima) | 04_analisis | Monte Carlo: 10000 simulaciones por escenario, semilla 531, bloques de 21 días, P0 mercado = 4,437.38 US$/oz, TC0 = 3.3629
+2026-10-17 08:23:13 (Lima) | 04_analisis | Tablas: 10 | Figuras: 5 | Cointegración oro-demanda: False
+2026-10-17 08:41:15 (Lima) | 04_analisis | Base: 5221 días, de 2004-11-18 a 2026-08-31; demanda medida con 'gld_monto_musd'
+2026-10-17 08:41:22 (Lima) | 04_analisis | Validación: VAN modelo 205.3 vs oficial 191.0 US$ mm
+2026-10-17 08:41:22 (Lima) | 04_analisis | Monte Carlo: 10000 simulaciones por escenario, semilla 531, bloques de 21 días, P0 mercado = 4,437.38 US$/oz, TC0 = 3.3629
+2026-10-17 08:41:30 (Lima) | 04_analisis | Tablas: 10 | Figuras: 7 (PNG 300 dpi + PDF) | Cointegración oro-demanda: False
+2026-10-17 08:46:36 (Lima) | 04_analisis | Base: 5221 días, de 2004-11-18 a 2026-08-31; demanda medida con 'gld_monto_musd'
+2026-10-17 08:46:43 (Lima) | 04_analisis | Validación: VAN modelo 205.3 vs oficial 191.0 US$ mm
+2026-10-17 08:46:43 (Lima) | 04_analisis | Monte Carlo: 10000 simulaciones por escenario, semilla 531, bloques de 21 días, P0 mercado = 4,437.38 US$/oz, TC0 = 3.3629
+2026-10-17 08:46:50 (Lima) | 04_analisis | Tablas: 10 | Figuras: 7 (PNG 300 dpi + PDF) | Cointegración oro-demanda: False

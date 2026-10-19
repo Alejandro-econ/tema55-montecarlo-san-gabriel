@@ -73,8 +73,7 @@ TABLAS = {}
 # BLOQUE 2. Carga de la base diaria y de los parámetros del proyecto
 # ------------------------------------------------------------------
 base = pd.read_csv(PROCESADOS / f"datos_procesados_{CODIGO}.csv", parse_dates=["fecha"])
-HAY_SPDR = base["demanda_ton"].notna().any()
-VAR_DEMANDA = "demanda_ton" if HAY_SPDR else "gld_monto_musd"
+VAR_DEMANDA = "gld_monto_musd"   # demanda de inversión: monto negociado diario del fondo de oro GLD
 registrar(f"Base: {len(base)} días, de {base['fecha'].min():%Y-%m-%d} a {base['fecha'].max():%Y-%m-%d}; "
           f"demanda medida con '{VAR_DEMANDA}'")
 
@@ -87,7 +86,7 @@ if par.isna().any():
 # ------------------------------------------------------------------
 # A.1 Estadística descriptiva de niveles y rendimientos
 niveles = {"Precio del oro (US$/oz)": "precio_oro",
-           ("Demanda: oro en el fondo GLD (t)" if HAY_SPDR else "Demanda: monto negociado GLD (US$ mm)"): VAR_DEMANDA,
+           "Demanda: monto negociado del fondo GLD (US$ mm)": VAR_DEMANDA,
            "Tipo de cambio (S/ por US$)": "tc",
            "Tasa EE. UU. 10 años (%)": "ust10",
            "EMBIG Perú (pbs)": "embig_peru"}
@@ -194,6 +193,16 @@ def calcular_van(precios, k, tc=None):
 
 
 van_base, _ = calcular_van(np.full((1, N_ANIOS + 1), P_TRS), np.array([K0]))
+
+# Precio del oro de equilibrio: el precio constante que hace VAN = 0. Mientras el margen sea positivo,
+# el VAN es una línea recta en el precio, así que basta evaluar dos precios y despejar.
+_p1, _p2 = C_UNIT + 100, C_UNIT + 1000
+_v1 = calcular_van(np.full((1, N_ANIOS + 1), _p1), np.array([K0]))[0][0]
+_v2 = calcular_van(np.full((1, N_ANIOS + 1), _p2), np.array([K0]))[0][0]
+P_EQUILIBRIO = _p1 - _v1 * (_p2 - _p1) / (_v2 - _v1)
+P_MERCADO = base["precio_oro"].iloc[-1]
+TC_MERCADO = base["tc"].iloc[-1]
+FECHA_ULT = base["fecha"].iloc[-1].strftime("%Y-%m-%d")
 tabla_val = pd.DataFrame([
     ("Oro pagable en la vida de la mina (koz)", par["oro_pagable_koz"], "TRS, Tabla 1-2"),
     ("Vida de la mina (años)", par["vida_mina_anios"], "TRS, sección 1.2"),
@@ -209,6 +218,9 @@ tabla_val = pd.DataFrame([
     ("VAN después de impuestos oficial (US$ mm)", par["van_despues_impuestos_musd"], "TRS, Tabla 1-2"),
     ("VAN del modelo con precio TRS (US$ mm)", van_base[0] / 1e6, "Modelo propio"),
     ("Diferencia modelo vs. oficial (%)", (van_base[0] / 1e6 / par["van_despues_impuestos_musd"] - 1) * 100, "Validación"),
+    ("Precio del oro de equilibrio, VAN = 0 (US$/oz)", P_EQUILIBRIO, "Cálculo con el modelo"),
+    (f"Precio de mercado al {FECHA_ULT} (US$/oz)", P_MERCADO, "BCRP, serie PD04704XD"),
+    ("Margen de seguridad del precio (%)", (1 - P_EQUILIBRIO / P_MERCADO) * 100, "Cálculo: 1 - equilibrio / mercado"),
 ], columns=["Concepto", "Valor", "Fuente"])
 guardar(tabla_val, "tabla7_parametros_y_validacion", decimales=2)
 registrar(f"Validación: VAN modelo {van_base[0]/1e6:,.1f} vs oficial {par['van_despues_impuestos_musd']:,.1f} US$ mm")
@@ -223,8 +235,10 @@ M = R[["r_oro", "r_demanda", "r_tc", "d_riesgo_pais"]].to_numpy()
 # Escenario principal "sin tendencia" (martingala): se quita la media de cada rendimiento y, en las
 # variables en logaritmos, también la mitad de su varianza, para que el precio ESPERADO futuro sea
 # igual al de hoy (no se supone que el oro seguirá subiendo como en el pasado).
+# La demanda (monto negociado) no es un precio: solo se le quita la media.
 M_SIN_TENDENCIA = M - M.mean(axis=0)
-M_SIN_TENDENCIA[:, :3] -= 0.5 * M[:, :3].var(axis=0)
+for col in (0, 2):   # 0 = oro, 2 = tipo de cambio
+    M_SIN_TENDENCIA[:, col] -= 0.5 * M[:, col].var()
 
 
 def simular_bloques(matriz, anios, rng):
@@ -241,7 +255,9 @@ def escenario(nombre, matriz, p0, tc0, rng):
     anios = N_ANIOS + 1                                             # +1 para el año de cierre
     s = simular_bloques(matriz, anios, rng)
     precios = p0 * np.exp(np.cumsum(s[:, :, 0], axis=1))
-    demanda_idx = np.exp(np.cumsum(s[:, :, 1], axis=1))            # índice (hoy = 1)
+    # Choque acumulado de demanda (en logaritmos, sin exponenciar): mide si en esa simulación
+    # el monto negociado del fondo de oro terminó por encima (+) o por debajo (-) de lo normal
+    demanda_idx = np.cumsum(s[:, :, 1], axis=1)
     tc = np.hstack([np.full((N_SIM, 1), tc0), tc0 * np.exp(np.cumsum(s[:, :, 2], axis=1))])
     k = np.maximum(K0 + s[:, 0, 3] / 100, 0.01)                     # WACC + cambio del riesgo país en 1 año
     van_usd, van_pen = calcular_van(precios, k, tc)
@@ -250,9 +266,6 @@ def escenario(nombre, matriz, p0, tc0, rng):
 
 
 rng = np.random.default_rng(SEMILLA)
-P_MERCADO = base["precio_oro"].iloc[-1]
-TC_MERCADO = base["tc"].iloc[-1]
-FECHA_ULT = base["fecha"].iloc[-1].strftime("%Y-%m-%d")
 esc_B = escenario(f"B. Precio de mercado al {FECHA_ULT}", M_SIN_TENDENCIA, P_MERCADO, TC_MERCADO, rng)
 esc_A = escenario("A. Precio del informe técnico", M_SIN_TENDENCIA, P_TRS, TC_MERCADO, rng)
 esc_C = escenario("C. Robustez: B con tendencia histórica", M, P_MERCADO, TC_MERCADO, rng)
@@ -284,7 +297,7 @@ pd.DataFrame({"van_usd_mm_A": esc_A["van_usd"], "van_usd_mm_B": esc_B["van_usd"]
 # cambia el VAN cuando el factor sube 1 desviación estándar -> se pueden comparar entre sí.
 fact = pd.DataFrame({
     "Precio del oro": np.log(esc_B["precios"][:, :N_ANIOS]).mean(axis=1),
-    "Demanda": np.log(esc_B["demanda"][:, N_ANIOS - 1]),
+    "Demanda": esc_B["demanda"][:, N_ANIOS - 1],
     "Tipo de cambio": np.log(esc_B["tc"][:, 1:]).mean(axis=1),
     "Riesgo país (WACC)": esc_B["k"],
 })
@@ -336,72 +349,266 @@ contraste = pd.DataFrame([
 guardar(contraste, "tabla10_contraste_hipotesis", decimales=4)
 
 # ------------------------------------------------------------------
-# BLOQUE FIGURAS
+# BLOQUE FIGURAS (estilo de revista: paneles con letra, colores validados para daltonismo,
+# etiquetas directas, sin títulos dentro de la imagen; el título y la nota van en LaTeX, APA 7)
+# Cada figura se guarda en PNG (300 dpi, para Word/Beamer) y en PDF vectorial (para LaTeX).
 # ------------------------------------------------------------------
-# Figura 1: las cuatro variables diarias (paneles separados: cada una con su propia escala)
-fig, ax = plt.subplots(2, 2, figsize=(10, 6), sharex=True)
-for a, (col, tit) in zip(ax.ravel(), [("precio_oro", "Precio del oro (US$/oz) - BCRP"),
-                                      (VAR_DEMANDA, "Demanda: oro en el fondo GLD (t) - SPDR" if HAY_SPDR else "Demanda: monto negociado GLD (US$ mm) - Yahoo"),
-                                      ("tc", "Tipo de cambio (S/ por US$) - BCRP"),
-                                      ("riesgo_pais_tasa", "Tasa EE. UU. 10 años + EMBIG Perú (%) - BCRP")]):
-    a.plot(base["fecha"], base[col], color=AZUL, linewidth=1)
-    a.set_title(tit, fontsize=9, loc="left")
-fig.tight_layout()
-fig.savefig(SALIDAS / "figura1_series_diarias.png")
-plt.close(fig)
+import logging
+from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.ticker import FuncFormatter, PercentFormatter
+import matplotlib.dates as mdates
 
-# Figura 2: histograma del VAN (escenario B) con el VAN oficial como referencia
-fig, a = plt.subplots(figsize=(8, 4.5))
-a.hist(esc_B["van_usd"], bins=80, color=AZUL, edgecolor="white", linewidth=0.4)
-a.axvline(van_trs, color=GRIS, linestyle="--", linewidth=1.5)
-a.text(van_trs, a.get_ylim()[1] * 0.92, f"  VAN oficial TRS = {van_trs:,.0f}", color=GRIS, fontsize=9)
-a.axvline(0, color="black", linewidth=1)
-a.set_xlabel("VAN después de impuestos (US$ millones)")
-a.set_ylabel("Número de simulaciones")
-a.set_title(f"Distribución del VAN de San Gabriel - {N_SIM:,} simulaciones (escenario B)", loc="left", fontsize=10)
-fig.savefig(SALIDAS / "figura2_histograma_van.png")
-plt.close(fig)
+logging.getLogger("matplotlib.font_manager").setLevel(logging.ERROR)
+TINTA, TINTA2, REJILLA = "#1f1f1d", "#5f5e5a", "#e6e5e0"
+AZUL, NARANJA, AQUA, AMARILLO, ROJO = "#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e34948"
+AZUL_CLARO, NARANJA_CLARO = "#cde2fb", "#fbd9c8"
+plt.rcParams.update({
+    "font.family": "sans-serif",
+    "font.sans-serif": ["Lato", "Source Sans 3", "Source Sans Pro", "Liberation Sans", "Arial", "DejaVu Sans"],
+    "font.size": 8.5, "axes.labelsize": 8.5, "axes.titlesize": 9, "xtick.labelsize": 8, "ytick.labelsize": 8,
+    "axes.edgecolor": TINTA2, "axes.labelcolor": TINTA, "axes.linewidth": 0.7, "text.color": TINTA,
+    "xtick.color": TINTA2, "ytick.color": TINTA2, "xtick.major.size": 3, "ytick.major.size": 3,
+    "axes.spines.top": False, "axes.spines.right": False,
+    "axes.grid": True, "axes.grid.axis": "y", "grid.color": REJILLA, "grid.linewidth": 0.6,
+    "legend.frameon": False, "legend.fontsize": 8, "figure.dpi": 150,
+    "savefig.dpi": 300, "savefig.bbox": "tight", "savefig.pad_inches": 0.05,
+    "pdf.fonttype": 42, "axes.formatter.use_locale": False,
+})
+def num(x, dec=0, signo=False):
+    """Número con separador de miles fino y signo menos tipográfico (estilo editorial)."""
+    t = f"{x:+,.{dec}f}" if signo else f"{x:,.{dec}f}"
+    return t.replace(",", "\u2009").replace("-", "\u2212")
 
-# Figura 3: función de distribución acumulada, escenario A frente a B
-fig, a = plt.subplots(figsize=(8, 4.5))
-for e, color in [(esc_A, NARANJA), (esc_B, AZUL)]:
+
+miles = FuncFormatter(lambda x, _: num(x))   # 4 437 con separador fino
+
+
+# Borra figuras de versiones anteriores del script que ya no se generan
+(SALIDAS / "figura2_histograma_van.png").unlink(missing_ok=True)
+
+
+def guardar_figura(fig, nombre):
+    fig.savefig(SALIDAS / f"{nombre}.png")
+    fig.savefig(SALIDAS / f"{nombre}.pdf")
+    plt.close(fig)
+
+
+def letra(ax, texto, titulo):
+    """Letra del panel (a, b, ...) en negrita y subtítulo, alineados a la izquierda."""
+    ax.text(0, 1.04, texto, transform=ax.transAxes, fontsize=10, fontweight="bold", color=TINTA, va="bottom")
+    ax.text(0.045, 1.04, titulo, transform=ax.transAxes, fontsize=8, color=TINTA, va="bottom")
+
+
+def nota_valor(ax, x, y, texto, color, dx=8, dy=0, ha="left"):
+    ax.scatter([x], [y], s=16, color=color, zorder=5, edgecolor="white", linewidth=0.8)
+    ax.annotate(texto, (x, y), xytext=(dx, dy), textcoords="offset points", fontsize=7.5,
+                color=TINTA, ha=ha, va="center", fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.15", facecolor="white", edgecolor="none", alpha=0.85))
+
+
+CRISIS = [("2008-09-15", "2009-03-31", "Crisis financiera\nglobal"), ("2020-03-01", "2020-06-30", "COVID-19")]
+
+# ---- Figura 1: las cuatro variables diarias (paneles con su propia escala; nunca doble eje) ----
+fig, ax = plt.subplots(2, 2, figsize=(7.2, 4.8), sharex=True)
+paneles = [("precio_oro", "a", "Precio del oro (US$ por onza) · BCRP", AZUL, False),
+           (VAR_DEMANDA, "b", "Demanda: monto negociado GLD (US$ mm, log.) · Yahoo", AQUA, True),
+           ("tc", "c", "Tipo de cambio (S/ por US$) · BCRP", NARANJA, False),
+           ("riesgo_pais_tasa", "d", "Tasa EE. UU. 10 años + EMBIG Perú (%) · FRED, BCRP", ROJO, False)]
+for i, (a, (col, l, tit, color, logy)) in enumerate(zip(ax.ravel(), paneles)):
+    for ini, fin, etiqueta in CRISIS:
+        a.axvspan(pd.Timestamp(ini), pd.Timestamp(fin), color="#f0efec", zorder=0)
+        if i == 0:
+            a.text(pd.Timestamp(ini), 1.0, " " + etiqueta, transform=a.get_xaxis_transform(),
+                   fontsize=6.5, color=TINTA2, va="top", ha="left")
+    serie = base.set_index("fecha")[col]
+    if logy:
+        a.plot(serie.index, serie, color=color, linewidth=0.35, alpha=0.35)
+        a.plot(serie.index, serie.rolling(63).mean(), color=color, linewidth=1.3, label="Media móvil 3 meses")
+        a.set_yscale("log")
+        a.legend(loc="upper left", fontsize=7)
+    else:
+        a.plot(serie.index, serie, color=color, linewidth=0.9)
+    nota_valor(a, serie.index[-1], serie.iloc[-1], num(serie.iloc[-1], 2), color, dx=-6, dy=10, ha="right")
+    if not logy:
+        a.yaxis.set_major_formatter(miles if serie.max() > 100 else FuncFormatter(lambda x, _: f"{x:.1f}"))
+    letra(a, l, tit)
+    a.xaxis.set_major_locator(mdates.YearLocator(4))
+    a.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+fig.tight_layout(h_pad=2.2, w_pad=2.0)
+guardar_figura(fig, "figura1_series_diarias")
+
+# ---- Figura 2: distribución del VAN, escenario A frente a B (densidades con zona de pérdida) ----
+fig, a = plt.subplots(figsize=(7.2, 3.6))
+x = np.linspace(min(esc_A["van_usd"].min(), -900), np.percentile(esc_B["van_usd"], 99.7), 800)
+a.axvspan(x.min(), 0, color="#fbe3e2", zorder=0)
+a.text(x.min() + 40, 0.97, "Zona de pérdida\n(VAN < 0)", transform=a.get_xaxis_transform(),
+       fontsize=7, color=ROJO, va="top", fontweight="bold")
+caja = []
+for e, color, claro, etiqueta in [(esc_A, NARANJA, NARANJA_CLARO, "A · Precio del informe técnico (US$ 2\u2009172/oz)"),
+                                   (esc_B, AZUL, AZUL_CLARO, f"B · Precio de mercado (US$ {P_MERCADO:,.0f}/oz)".replace(",", "\u2009"))]:
+    v = e["van_usd"]
+    dens = stats.gaussian_kde(v)(x)
+    a.fill_between(x, dens, color=claro, alpha=0.75, linewidth=0)
+    a.plot(x, dens, color=color, linewidth=1.6)
+    i_max = dens.argmax()
+    a.annotate(etiqueta, (x[i_max], dens[i_max]), xytext=(45, -55) if color == NARANJA else (70, 22), textcoords="offset points",
+               fontsize=7.5, color=color, fontweight="bold", va="center",
+               arrowprops=dict(arrowstyle="-", color=color, linewidth=0.6))
+    media = v.mean()
+    a.plot([media, media], [0, stats.gaussian_kde(v)(media)[0]], color=color, linewidth=1, linestyle=(0, (3, 2)))
+    r = resumen(v)
+    caja.append(f"{etiqueta[0]}:  E[VAN] {num(r['Media'])}  ·  VaR 95 % {num(r['P5 (VaR 95 %)'])}  ·  "
+                f"P(VAN<0) {r['Prob. VAN < 0 (%)']:.1f} %")
+a.axvline(van_trs, color=TINTA2, linewidth=1, linestyle=(0, (1, 2)))
+a.text(van_trs, 0.55, f" VAN oficial\n del informe\n técnico: {num(van_trs)}", transform=a.get_xaxis_transform(),
+       fontsize=7, color=TINTA2, va="top", bbox=dict(facecolor="white", edgecolor="none", alpha=0.8, pad=1))
+a.axvline(0, color=TINTA, linewidth=0.8)
+a.text(0.99, 0.97, "US$ millones\n" + "\n".join(caja), transform=a.transAxes, ha="right", va="top", fontsize=7,
+       bbox=dict(boxstyle="round,pad=0.5", facecolor="white", edgecolor=REJILLA))
+a.set_xlim(x.min(), x.max())
+a.set_ylim(bottom=0)
+a.set_yticks([])
+a.spines["left"].set_visible(False)
+a.xaxis.set_major_formatter(miles)
+a.set_xlabel("VAN después de impuestos (US$ millones) · 10\u2009000 simulaciones por escenario · línea discontinua = media")
+guardar_figura(fig, "figura2_distribucion_van")
+
+# ---- Figura 3: probabilidad acumulada del VAN con la probabilidad de pérdida marcada ----
+fig, a = plt.subplots(figsize=(7.2, 3.4))
+for e, color, etiqueta in [(esc_A, NARANJA, "A · Precio del informe técnico"), (esc_B, AZUL, "B · Precio de mercado")]:
     v = np.sort(e["van_usd"])
-    a.plot(v, np.arange(1, len(v) + 1) / len(v), color=color, linewidth=2, label=e["nombre"])
-a.axvline(0, color="black", linewidth=1)
+    p = np.arange(1, len(v) + 1) / len(v)
+    a.plot(v, p, color=color, linewidth=1.8, label=etiqueta)
+    p0 = (v < 0).mean()
+    a.scatter([0], [p0], s=18, color=color, zorder=5, edgecolor="white", linewidth=0.8)
+    a.annotate(f"P(VAN < 0) = {p0*100:.1f} %", (0, p0), xytext=(60, 30) if color == AZUL else (-40, 14),
+               textcoords="offset points", ha="left" if color == AZUL else "right", fontsize=7.5, fontweight="bold", color=color,
+               arrowprops=dict(arrowstyle="-", color=color, linewidth=0.6))
+    for q in (0.05, 0.95):
+        xq = np.percentile(v, q * 100)
+        a.scatter([xq], [q], s=12, color=color, zorder=4)
+a.axvline(0, color=TINTA, linewidth=0.8)
+a.set_xlim(min(esc_A["van_usd"].min(), -900) * 1.6, np.percentile(esc_B["van_usd"], 99.5))
+a.axhline(0.05, color=REJILLA, linewidth=0.8)
+a.axhline(0.95, color=REJILLA, linewidth=0.8)
+a.text(a.get_xlim()[1], 0.05, "P5 ", ha="right", va="bottom", fontsize=7, color=TINTA2)
+a.text(a.get_xlim()[1], 0.95, "P95 ", ha="right", va="bottom", fontsize=7, color=TINTA2)
+a.yaxis.set_major_formatter(PercentFormatter(1.0, decimals=0))
+a.xaxis.set_major_formatter(miles)
 a.set_xlabel("VAN después de impuestos (US$ millones)")
 a.set_ylabel("Probabilidad acumulada")
-a.legend(frameon=False, fontsize=9)
-a.set_title("Probabilidad acumulada del VAN: precio del informe técnico frente a precio de mercado", loc="left", fontsize=10)
-fig.savefig(SALIDAS / "figura3_distribucion_acumulada.png")
-plt.close(fig)
+a.legend(loc="center right")
+guardar_figura(fig, "figura3_distribucion_acumulada")
 
-# Figura 4: tornado de sensibilidad (coeficientes estandarizados con IC 95 %)
+# ---- Figura 4: tornado de sensibilidad con intervalos de confianza al 95 % ----
+nombres_factor = {"Precio del oro": "Precio del oro", "Tipo de cambio": "Tipo de cambio (S/ por US$)",
+                  "Riesgo país (WACC)": "Tasa de descuento (riesgo país)", "Demanda": "Demanda de inversión (GLD)"}
 orden = b.abs().sort_values().index
-fig, a = plt.subplots(figsize=(8, 3.8))
-a.barh(orden, b[orden], color=[AZUL if v >= 0 else NARANJA for v in b[orden]], height=0.55)
+fig, a = plt.subplots(figsize=(7.2, 3.0))
+colores = [AZUL if v >= 0 else ROJO for v in b[orden]]
+a.barh([nombres_factor[o] for o in orden], b[orden], color=colores, height=0.58, zorder=3)
 ic = 1.96 * mod_sens.bse[orden]
-a.errorbar(b[orden], orden, xerr=ic, fmt="none", ecolor="black", capsize=3, linewidth=1)
-a.axvline(0, color="black", linewidth=1)
-a.set_xlabel("Cambio del VAN (S/ millones) cuando el factor sube 1 desviación estándar")
-a.set_title("Sensibilidad del VAN a cada fuente de riesgo (escenario B)", loc="left", fontsize=10)
-fig.savefig(SALIDAS / "figura4_tornado_sensibilidad.png")
-plt.close(fig)
+a.errorbar(b[orden], range(len(orden)), xerr=ic, fmt="none", ecolor=TINTA, capsize=2.5, linewidth=0.8, zorder=4)
+for y, (o, v) in enumerate(b[orden].items()):
+    extremo = v + (ic[o] if v >= 0 else -ic[o])
+    a.text(extremo + (0.015 if v >= 0 else -0.015) * abs(b).max(), y, num(v, signo=True), va="center",
+           ha="left" if v >= 0 else "right", fontsize=7.5, fontweight="bold", color=TINTA)
+a.axvline(0, color=TINTA, linewidth=0.8)
+a.grid(axis="y", visible=False)
+a.grid(axis="x", visible=True)
+lim = max(abs(b).max() + ic.max(), 1) * 1.25
+a.set_xlim(min(b.min() - ic.max(), 0) * 1.6 - 0.12 * abs(b).max(), lim)
+a.xaxis.set_major_formatter(miles)
+a.set_xlabel("Cambio del VAN en soles (S/ millones) cuando el factor sube una desviación estándar")
+a.text(0.99, 0.06, f"R² = {mod_sens.rsquared:.3f}   ·   F = {num(mod_sens.fvalue)} (p < 0.001)   ·   N = {num(mod_sens.nobs)}   ·   barras = IC 95 %",
+       transform=a.transAxes, ha="right", fontsize=7, color=TINTA2)
+guardar_figura(fig, "figura4_tornado_sensibilidad")
 
-# Figura 5: abanico de trayectorias simuladas del precio del oro
-anios = np.arange(0, N_ANIOS + 2)
+# ---- Figura 5: historia del oro + abanico de 10 000 trayectorias simuladas ----
+fig, a = plt.subplots(figsize=(7.2, 3.8))
+hist = base.set_index("fecha")["precio_oro"].loc["2014-01-01":].resample("ME").mean()
+a.plot(hist.index, hist, color=TINTA, linewidth=1.2, label="Observado (promedio mensual, BCRP)")
+t0 = base["fecha"].iloc[-1]
+fechas_fut = pd.DatetimeIndex([t0 + pd.DateOffset(years=k) for k in range(0, N_ANIOS + 2)])
 pr = np.hstack([np.full((N_SIM, 1), P_MERCADO), esc_B["precios"]])
-fig, a = plt.subplots(figsize=(8, 4.5))
-a.fill_between(anios, np.percentile(pr, 5, axis=0), np.percentile(pr, 95, axis=0), color=AZUL, alpha=0.18, label="Percentiles 5-95")
-a.fill_between(anios, np.percentile(pr, 25, axis=0), np.percentile(pr, 75, axis=0), color=AZUL, alpha=0.35, label="Percentiles 25-75")
-a.plot(anios, np.median(pr, axis=0), color=AZUL, linewidth=2, label="Mediana")
-a.axhline(P_TRS, color=GRIS, linestyle="--", linewidth=1.2)
-a.text(0.2, P_TRS, f"Precio TRS {P_TRS:,.0f}", color=GRIS, fontsize=9, va="bottom")
-a.set_xlabel("Año del proyecto")
-a.set_ylabel("US$ por onza")
-a.legend(frameon=False, fontsize=9, loc="upper left")
-a.set_title("Trayectorias simuladas del precio del oro (escenario B)", loc="left", fontsize=10)
-fig.savefig(SALIDAS / "figura5_abanico_precio_oro.png")
-plt.close(fig)
+for q_inf, q_sup, alfa in [(5, 95, 0.22), (25, 75, 0.45)]:
+    a.fill_between(fechas_fut, np.percentile(pr, q_inf, axis=0), np.percentile(pr, q_sup, axis=0),
+                   color=AZUL, alpha=alfa, linewidth=0, label=f"Simulado: percentiles {q_inf}–{q_sup}")
+idx = np.random.default_rng(SEMILLA).choice(N_SIM, 18, replace=False)
+for i in idx:
+    a.plot(fechas_fut, pr[i], color=AZUL, linewidth=0.3, alpha=0.3)
+a.plot(fechas_fut, np.median(pr, axis=0), color=AZUL, linewidth=1.8, label="Simulado: mediana")
+a.axvline(t0, color=TINTA2, linewidth=0.8, linestyle=(0, (3, 2)))
+a.text(t0, 0.98, f" Fecha de corte: {t0:%d/%m/%Y}", transform=a.get_xaxis_transform(), fontsize=7, color=TINTA2, va="top")
+a.axhline(P_TRS, color=NARANJA, linewidth=1, linestyle=(0, (4, 2)))
+a.text(hist.index[0], P_TRS * 1.03, f"Precio supuesto en el informe técnico: US$ {num(P_TRS)}",
+       fontsize=7, color=NARANJA, va="bottom", fontweight="bold",
+       bbox=dict(facecolor="white", edgecolor="none", alpha=0.8, pad=1))
+a.axhline(P_EQUILIBRIO, color=ROJO, linewidth=1, linestyle=(0, (1, 2)))
+a.text(hist.index[0], P_EQUILIBRIO * 0.97, f"Precio de equilibrio (VAN = 0): US$ {num(P_EQUILIBRIO)}",
+       fontsize=7, color=ROJO, va="top", fontweight="bold",
+       bbox=dict(facecolor="white", edgecolor="none", alpha=0.8, pad=1))
+for q in (95, 50, 5):
+    yq = np.percentile(pr[:, -1], q)
+    nota_valor(a, fechas_fut[-1], yq, f"P{q}: {num(yq)}", AZUL, dx=6)
+a.set_yscale("log")
+a.yaxis.set_major_formatter(miles)
+a.yaxis.set_minor_formatter(FuncFormatter(lambda x, _: ""))
+a.set_ylabel("US$ por onza (escala logarítmica)")
+a.legend(loc="upper left", fontsize=7, ncol=1)
+a.set_xlim(hist.index[0], fechas_fut[-1] + pd.DateOffset(years=2))
+a.set_ylim(min(hist.min(), np.percentile(pr[:, -1], 5)) * 0.55, np.percentile(pr[:, -1], 95) * 1.6)
+guardar_figura(fig, "figura5_abanico_precio_oro")
+
+# ---- Figura 6: cada simulación como un punto: VAN frente al precio medio del oro ----
+fig, a = plt.subplots(figsize=(7.2, 3.8))
+for e, color, etiqueta in [(esc_A, NARANJA, "A · Precio del informe técnico"), (esc_B, AZUL, "B · Precio de mercado")]:
+    precio_medio = e["precios"][:, :N_ANIOS].mean(axis=1)
+    a.scatter(precio_medio, e["van_usd"], s=2.5, color=color, alpha=0.18, linewidths=0, rasterized=True, label=etiqueta)
+a.axhline(0, color=TINTA, linewidth=0.8)
+a.axvline(P_EQUILIBRIO, color=ROJO, linewidth=1, linestyle=(0, (1, 2)))
+a.text(P_EQUILIBRIO, 0.97, f" Precio de equilibrio\n US$ {num(P_EQUILIBRIO)}/oz",
+       transform=a.get_xaxis_transform(), fontsize=7, color=ROJO, va="top", fontweight="bold")
+a.set_xscale("log")
+a.xaxis.set_major_formatter(miles)
+a.xaxis.set_minor_formatter(FuncFormatter(lambda x, _: ""))
+a.yaxis.set_major_formatter(miles)
+a.set_xlabel("Precio medio simulado del oro durante la vida de la mina (US$ por onza, escala log.)")
+a.set_ylabel("VAN (US$ millones)")
+leg = a.legend(loc="lower right", markerscale=5, ncol=2, bbox_to_anchor=(1, 0.01))
+for h in leg.legend_handles:
+    h.set_alpha(1)
+guardar_figura(fig, "figura6_van_vs_precio")
+
+# ---- Figura 7: matriz de correlaciones de los rendimientos diarios (paleta divergente) ----
+etiquetas = ["Oro", "Demanda", "Tipo de\ncambio", "Riesgo\npaís"]
+C = R[["r_oro", "r_demanda", "r_tc", "d_riesgo_pais"]].corr().to_numpy()
+mapa = LinearSegmentedColormap.from_list("divergente", [ROJO, "#f0efec", AZUL])
+fig, a = plt.subplots(figsize=(3.8, 3.2))
+sub = C[1:, :3]                                    # filas: demanda, TC, riesgo; columnas: oro, demanda, TC
+mascara = np.triu(np.ones_like(sub, dtype=bool), k=1)
+im = a.imshow(np.ma.array(sub, mask=mascara), cmap=mapa, vmin=-0.5, vmax=0.5)
+n = len(R)
+for i in range(3):
+    for j in range(i + 1):
+        r = sub[i, j]
+        p = 2 * stats.t.sf(abs(r) * np.sqrt((n - 2) / (1 - r ** 2)), n - 2)
+        estrellas = "***" if p < 0.01 else "**" if p < 0.05 else "*" if p < 0.10 else ""
+        a.text(j, i, num(r, 3, signo=True) + estrellas, ha="center", va="center", fontsize=7.5,
+               fontweight="bold", color="white" if abs(r) > 0.3 else TINTA)
+a.set_xticks(range(3), etiquetas[:3], fontsize=7)
+a.set_yticks(range(3), etiquetas[1:], fontsize=7)
+a.tick_params(length=0)
+a.grid(False)
+for sp in a.spines.values():
+    sp.set_visible(False)
+cb = fig.colorbar(im, ax=a, fraction=0.046, pad=0.04)
+cb.outline.set_visible(False)
+cb.ax.tick_params(labelsize=7, length=0)
+cb.set_label("Correlación de Pearson", fontsize=7)
+fig.text(0.02, -0.02, f"Rendimientos diarios · N = {num(n)} días · *** p < 0.01  ** p < 0.05  * p < 0.10",
+         fontsize=6.5, color=TINTA2)
+guardar_figura(fig, "figura7_correlaciones")
 
 # ------------------------------------------------------------------
 # BLOQUE FINAL. Excel de presentación (generado por código, no a mano) y resumen en pantalla
@@ -409,7 +616,7 @@ plt.close(fig)
 with pd.ExcelWriter(SALIDAS / "resultados_tema55.xlsx") as xl:
     for nombre, t in TABLAS.items():
         t.to_excel(xl, sheet_name=nombre[:31], index=False)
-registrar(f"Tablas: {len(TABLAS)} | Figuras: 5 | Cointegración oro-demanda: {COINTEGRADAS}")
+registrar(f"Tablas: {len(TABLAS)} | Figuras: 7 (PNG 300 dpi + PDF) | Cointegración oro-demanda: {COINTEGRADAS}")
 print("\n=== CONTRASTE DE HIPÓTESIS ===")
 print(contraste[["Hipótesis", "Estadístico", "Valor p", "Decisión"]].to_string(index=False))
 print("\n=== DISTRIBUCIÓN DEL VAN ===")

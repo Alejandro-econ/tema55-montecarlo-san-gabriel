@@ -38,7 +38,7 @@ CODIGO = "2024200531K"
 SEMILLA = 531              # 4 últimos dígitos del código de matrícula (0531)
 FECHA_INICIO = "2004-11-18"
 FECHA_CORTE = "2026-08-31"
-SERIES_BCRP = {"PD04704XD": "precio_oro", "PD04638PD": "tc", "PD04719XD": "ust10",
+SERIES_BCRP = {"PD04704XD": "precio_oro", "PD04638PD": "tc",
                "PD04709XD": "embig_peru"}
 MESES = {"Ene": 1, "Feb": 2, "Mar": 3, "Abr": 4, "May": 5, "Jun": 6, "Jul": 7,
          "Ago": 8, "Set": 9, "Sep": 9, "Oct": 10, "Nov": 11, "Dic": 12}
@@ -88,40 +88,26 @@ registrar(f"Yahoo GLD: {yahoo['gld_cierre'].notna().sum()} días", len(yahoo))
 tablas.append(yahoo)
 
 # ------------------------------------------------------------------
-# BLOQUE 4. SPDR: toneladas de oro en el fondo GLD (demanda de inversión)
+# BLOQUE 4. FRED: tasa del Tesoro de EE. UU. a 10 años (los días sin dato vienen como "." o vacíos)
 # ------------------------------------------------------------------
-archivo_spdr = CRUDOS / f"datos_crudos_{CODIGO}_spdr_gld_archivo.csv"
-hay_spdr = archivo_spdr.exists()
-if hay_spdr:
-    lineas = archivo_spdr.read_text(encoding="utf-8", errors="replace").splitlines()
-    # 4.1 Se busca la fila de encabezados (la que contiene "Date" y "Tonnes")
-    fila_enc = next(i for i, l in enumerate(lineas) if "date" in l.lower() and "tonnes" in l.lower())
-    spdr = pd.read_csv(archivo_spdr, skiprows=fila_enc, encoding="utf-8", encoding_errors="replace")
-    spdr.columns = [c.strip() for c in spdr.columns]
-    col_fecha = next(c for c in spdr.columns if "date" in c.lower())
-    col_ton = next(c for c in spdr.columns if "tonnes" in c.lower())
-    print(f"SPDR: columna de fecha = '{col_fecha}' | columna de toneladas = '{col_ton}'")
-    spdr["fecha"] = pd.to_datetime(spdr[col_fecha].astype(str).str.strip(), errors="coerce", dayfirst=True, format="mixed")
-    spdr["demanda_ton"] = pd.to_numeric(spdr[col_ton].astype(str).str.replace(",", "").str.strip(), errors="coerce")
-    spdr = spdr.dropna(subset=["fecha"]).set_index("fecha")[["demanda_ton"]]   # filas "HOLIDAY" quedan vacías
-    spdr = spdr[~spdr.index.duplicated(keep="first")]
-    registrar(f"SPDR GLD toneladas: {spdr['demanda_ton'].notna().sum()} días con dato", len(spdr))
-    tablas.append(spdr)
-else:
-    registrar("AVISO: no existe el archivo SPDR. La demanda se medirá con el volumen negociado de GLD (Yahoo).")
+fred = pd.read_csv(CRUDOS / f"datos_crudos_{CODIGO}_fred_DGS10.csv", dtype=str)
+fred = pd.DataFrame({
+    "fecha": pd.to_datetime(fred.iloc[:, 0], errors="coerce"),
+    "ust10": pd.to_numeric(fred.iloc[:, 1], errors="coerce"),
+}).dropna(subset=["fecha"]).set_index("fecha")
+registrar(f"FRED DGS10 (ust10): {fred['ust10'].notna().sum()} datos reales de {len(fred)} fechas", len(fred))
+tablas.append(fred)
 
 # ------------------------------------------------------------------
 # BLOQUE 5. Unión por la llave común "fecha" y recorte al periodo declarado
 # ------------------------------------------------------------------
 base = pd.concat(tablas, axis=1).sort_index()
 base = base.loc[FECHA_INICIO:FECHA_CORTE]
-if not hay_spdr:
-    # Respaldo documentado: monto negociado diario del fondo (US$ millones) = precio x volumen
-    base["demanda_ton"] = np.nan
+# Demanda de inversión en oro: monto negociado diario del fondo GLD (US$ millones) = precio x volumen
 base["gld_monto_musd"] = base["gld_cierre"] * base["gld_volumen"] / 1e6
 base["riesgo_pais_tasa"] = base["ust10"] + base["embig_peru"] / 100   # % = tasa EE. UU. + spread EMBIG
 
-VARIABLES_NUCLEO = ["precio_oro", "tc", "ust10", "embig_peru", "demanda_ton" if hay_spdr else "gld_monto_musd"]
+VARIABLES_NUCLEO = ["precio_oro", "tc", "ust10", "embig_peru", "gld_monto_musd"]
 antes = len(base)
 base = base.dropna(subset=VARIABLES_NUCLEO)   # solo días en que TODAS las fuentes tienen dato real
 registrar(f"Unión: {antes} fechas -> {len(base)} días con las 5 variables núcleo completas", len(base))
@@ -129,7 +115,7 @@ registrar(f"Unión: {antes} fechas -> {len(base)} días con las 5 variables núc
 # ------------------------------------------------------------------
 # BLOQUE 6. Rendimientos logarítmicos diarios y marca de atípicos (|z| > 5)
 # ------------------------------------------------------------------
-var_demanda = "demanda_ton" if hay_spdr else "gld_monto_musd"
+var_demanda = "gld_monto_musd"
 base["r_oro"] = np.log(base["precio_oro"]).diff()
 base["r_tc"] = np.log(base["tc"]).diff()
 base["r_demanda"] = np.log(base[var_demanda]).diff()
@@ -181,5 +167,5 @@ print("\nTabla de cotejo (compare con la web del BCRP):")
 print(cotejo[["fecha", "fecha_bcrp", "oro_crudo", "precio_oro", "tc_crudo", "tc"]].to_string(index=False))
 
 print("\nObservaciones reales por variable en la base procesada:")
-print(base[["precio_oro", "tc", "ust10", "embig_peru", "demanda_ton",
+print(base[["precio_oro", "tc", "ust10", "embig_peru", "gld_monto_musd",
             "gld_cierre", "gld_volumen"]].notna().sum().to_string())

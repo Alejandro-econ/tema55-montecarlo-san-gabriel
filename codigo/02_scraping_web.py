@@ -8,8 +8,9 @@ VÍA 2 — DESCARGA PROGRAMÁTICA (numeral 2.4.3 de la consigna)
 (a) SEC (EE. UU.): descarga el PDF oficial del "Technical Report Summary" de la mina San Gabriel
     (Buenaventura, Moquegua) y lee con pdfplumber los parámetros del proyecto:
     inversión, producción, costo, vida útil, tasa de descuento y VAN oficial.
-(b) SPDR Gold Shares: descarga el archivo histórico (CSV) con las toneladas de oro que guarda
-    el fondo GLD cada día. Esa es la variable de DEMANDA de inversión en oro.
+(b) FRED (Banco de la Reserva Federal de St. Louis): descarga el archivo CSV oficial con el
+    rendimiento diario del bono del Tesoro de EE. UU. a 10 años (serie DGS10), insumo de la tasa
+    de descuento (tasa libre de riesgo + riesgo país).
 Antes de cada descarga se lee robots.txt, se usa un User-Agent identificable y se pausa 1 s.
 Los archivos originales quedan intactos en datos_crudos/.
 """
@@ -48,7 +49,10 @@ URL_TRS = "https://www.sec.gov/Archives/edgar/data/1013131/000141057825001056/tm
 PAGINAS_A_LEER = 60  # el resumen ejecutivo (sección 1) contiene todos los parámetros que se usan
 
 # Archivo histórico del fondo GLD publicado por su patrocinador
-URL_SPDR = "https://www.spdrgoldshares.com/assets/dynamic/GLD/GLD_US_archive_EN.csv"
+# Archivo CSV oficial de FRED (no requiere clave). robots.txt de FRED permite /graph/fredgraph.csv
+FECHA_INICIO = "2004-11-18"
+FECHA_CORTE = "2026-08-31"
+URL_FRED = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id=DGS10&cosd={FECHA_INICIO}&coed={FECHA_CORTE}"
 
 
 def registrar(script, url, http, filas, mensaje=""):
@@ -150,23 +154,23 @@ if archivo_pdf.exists():
               f"parámetros encontrados {len(parametros) - faltan}/{len(parametros)} (PDF de {n_total} páginas)")
 
 # ------------------------------------------------------------------
-# BLOQUE 3. (b) SPDR Gold Shares: tenencias diarias de oro del fondo GLD (toneladas)
+# BLOQUE 3. (b) FRED: tasa del Tesoro de EE. UU. a 10 años (DGS10), archivo CSV diario
 # ------------------------------------------------------------------
 time.sleep(1)
-if permitido_por_robots(URL_SPDR):
+if permitido_por_robots(URL_FRED):
     time.sleep(1)
     try:
-        r = requests.get(URL_SPDR, headers={"User-Agent": USER_AGENT}, timeout=120)
-        if r.status_code == 200 and len(r.content) > 1000:
-            (CRUDOS / f"datos_crudos_{CODIGO}_spdr_gld_archivo.csv").write_bytes(r.content)  # original intacto
-            n_lineas = r.content.count(b"\n")
-            registrar("02_scraping_web", URL_SPDR, r.status_code, n_lineas, "Archivo histórico GLD guardado")
+        r = requests.get(URL_FRED, headers={"User-Agent": USER_AGENT}, timeout=120)
+        if r.status_code == 200 and b"DGS10" in r.content[:200]:
+            (CRUDOS / f"datos_crudos_{CODIGO}_fred_DGS10.csv").write_bytes(r.content)  # original intacto
+            n_filas = r.content.count(b"\n") - 1
+            registrar("02_scraping_web", URL_FRED, r.status_code, n_filas, "FRED DGS10 (CSV) guardado")
         else:
-            registrar("02_scraping_web", URL_SPDR, r.status_code, 0,
-                      "Respuesta vacía o bloqueada: documentar en incidencias_fuente.md")
+            registrar("02_scraping_web", URL_FRED, r.status_code, 0,
+                      "La respuesta no es el CSV esperado: documentar en incidencias_fuente.md")
     except Exception as e:
-        registrar("02_scraping_web", URL_SPDR, "ERROR", 0, str(e))
+        registrar("02_scraping_web", URL_FRED, "ERROR", 0, str(e))
 else:
-    registrar("02_scraping_web", URL_SPDR, "NO_PERMITIDO", 0, "robots.txt no permite la ruta")
+    registrar("02_scraping_web", URL_FRED, "NO_PERMITIDO", 0, "robots.txt no permite la ruta")
 
 print("\nListo. Revise datos_crudos/ y log_ejecucion.txt")

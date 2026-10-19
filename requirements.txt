@@ -1,11 +1,10 @@
-# Este archivo se reemplaza con las versiones exactas de Colab (celda 6 del cuaderno ejecutar_en_colab.ipynb)
-requests
-pandas
-numpy
-yfinance
-pdfplumber
-statsmodels
-scipy
-matplotlib
-openpyxl
-python-dotenv
+requests==2.32.4
+pandas==2.2.3
+numpy==2.1.3
+yfinance==0.2.66
+pdfplumber==0.11.10
+statsmodels==0.15.0
+scipy==1.16.3
+matplotlib==3.10.0
+openpyxl==3.1.5
+python-dotenv==1.2.3

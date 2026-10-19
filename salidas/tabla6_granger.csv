@@ -1,0 +1,3 @@
+H0,Estadístico F,Valor p,gl,Decisión
+Demanda NO causa en sentido de Granger a Oro,0.8121138410896891,0.5407879593086312,"(5204, 5)",No se rechaza H0
+Oro NO causa en sentido de Granger a Demanda,13.282778326993128,6.908332852847002e-13,"(5204, 5)",Se rechaza H0
